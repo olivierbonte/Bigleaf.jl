@@ -4,17 +4,17 @@ struct Alduchov1996 <: EsatMethod end
 struct Allen1998 <: EsatMethod end
 
 """
-    Esat_slope(Tair; Esat_formula, constants) 
-    Esat_from_Tair(Tair; Esat_formula, constants) 
-    Esat_from_Tair_deriv(Tair; Esat_formula, constants) 
+    Esat_slope(Tair; Esat_formula, constants)
+    Esat_from_Tair(Tair; Esat_formula, constants)
+    Esat_from_Tair_deriv(Tair; Esat_formula, constants)
 
 Saturation Vapor Pressure (Esat) and Slope of the Esat Curve
 
 # Arguments
 - `Tair`:      Air temperature (deg C)
-- `Esat_formula=Sonntag1990()`:   Esat_formula to be used. Either 
+- `Esat_formula=Sonntag1990()`:   Esat_formula to be used. Either
    `Sonntag1990()` (Default), `Alduchov1996()`, or `Allen1998()`.
-- `constants=BigleafConstants()`: Dictionary with entry  :Pa2kPa 
+- `constants=BigleafConstants()`: Dictionary with entry  :Pa2kPa
 
 # Details
 Esat (kPa) is calculated using the Magnus equation:
@@ -26,23 +26,23 @@ of the Magnus equation is recommended by the WMO (WMO 2008; p1.4-29). Alternativ
 parameter values determined by Alduchov & Eskridge 1996 or Allen et al. 1998 can b
 used (see references).
 The slope of the Esat curve (``\\Delta``) is calculated as the first derivative of the function:
- 
+
 ``\\Delta = {dEsat \\over dTair}``
 
-# Value   
+# Value
 - `Esat_from_Tair`: Saturation vapor pressure (kPa)
 - `Esat_from_Tair_deriv`: Slope of the saturation vapor pressure curve (kPa K-1)
 - `Esat_slope`: A tuple of the two above values
 # References
-Sonntag D. 1990: Important new values of the physical constants of 1986, vapor 
-pressure formulations based on the ITS-90 and psychrometric formulae. 
+Sonntag D. 1990: Important new values of the physical constants of 1986, vapor
+pressure formulations based on the ITS-90 and psychrometric formulae.
 Zeitschrift fuer Meteorologie 70, 340-344.
 
 World Meteorological Organization 2008: Guide to Meteorological Instruments
 and Methods of Observation (WMO-No.8). World Meteorological Organization,
 Geneva. 7th Edition,
 
-Alduchov, O. A. & Eskridge, R. E., 1996: Improved Magnus form approximation of 
+Alduchov, O. A. & Eskridge, R. E., 1996: Improved Magnus form approximation of
 saturation vapor pressure. Journal of Applied Meteorology, 35, 601-609
 
 Allen, R.G., Pereira, L.S., Raes, D., Smith, M., 1998: Crop evapotranspiration -
@@ -55,24 +55,24 @@ Esat_from_Tair_deriv(20.0)    # its derivative to temperature in kPa K-1
 Esat_slope(20.0)              # both as a tuple
 ```
 """
-function Esat_slope(Tair::Number; Esat_formula=Sonntag1990(), constants=BigleafConstants()) 
+function Esat_slope(Tair::Number; Esat_formula=Sonntag1990(), constants=BigleafConstants())
   Esat = Esat_from_Tair(Tair; Esat_formula, constants)
   Delta = Esat_from_Tair_deriv(Tair; Esat_formula, constants)
   Esat, Delta
 end,
-function Esat_from_Tair(Tair; Esat_formula=Sonntag1990(), constants=BigleafConstants()) 
-  a,b,c = get_EsatCoef(Esat_formula)
-  Esat = a * exp((b * Tair) / (c + Tair)) * constants.Pa2kPa
+function Esat_from_Tair(Tair::FT; Esat_formula=Sonntag1990(), constants=BigleafConstants()) where FT
+  a,b,c = map(FT, get_EsatCoef(Esat_formula))
+  Esat = a * exp((b * Tair) / (c + Tair)) * FT(constants.Pa2kPa)
 end,
-function Esat_from_Tair_deriv(Tair; Esat_formula=Sonntag1990(), constants=BigleafConstants()) 
+function Esat_from_Tair_deriv(Tair::FT; Esat_formula=Sonntag1990(), constants=BigleafConstants()) where FT
   # slope of the saturation vapor pressure curve
   #Delta = eval(D(expression(a * exp((b * Tair) / (c + Tair))),name="Tair"))
-  a,b,c = get_EsatCoef(Esat_formula)
+  a,b,c = map(FT, get_EsatCoef(Esat_formula))
   #Delta_Pa = @. a*(b / (Tair + c) + (-Tair*b) / ((Tair + c)^2))*exp((Tair*b) / (Tair + c))
   Delta_Pa = @. a * (exp((b * Tair)/(c + Tair)) * (b/(c + Tair) - (b * Tair)/(c + Tair)^2))
-  Delta = Delta_Pa .* constants.Pa2kPa
+  Delta = Delta_Pa .* FT(constants.Pa2kPa)
 end
-    
+
 get_EsatCoef(::Sonntag1990) = (a=611.2,b=17.62,c=243.12)
 get_EsatCoef(::Alduchov1996) = (a=610.94,b=17.625,c=243.04)
 get_EsatCoef(::Allen1998) = (a=610.8,b=17.27,c=237.3)
@@ -129,10 +129,10 @@ The conversions are given by
 
 where Tair is in deg C and pressure in Pa (converted from kPa internally).
 
-# References 
-Jones, H_G_ 1992_ Plants and microclimate: a quantitative approach to 
+# References
+Jones, H_G_ 1992_ Plants and microclimate: a quantitative approach to
   environmental plant physiology_
-  2nd Edition_, Cambridge University Press, Cambridge_ 428 
+  2nd Edition_, Cambridge University Press, Cambridge_ 428
 
 # Examples
 ```jldoctest; output = false
@@ -145,12 +145,12 @@ true
 """
 function ms_to_mol(G_ms,Tair,pressure; constants=BigleafConstants())
   Tair     = Tair + oftype(Tair,constants.Kelvin)
-  pressure = pressure * constants.kPa2Pa 
+  pressure = pressure * constants.kPa2Pa
   G_mol  = G_ms * pressure / (oftype(Tair, constants.Rgas)  * Tair)
 end,
 function mol_to_ms(G_mol,Tair,pressure; constants=BigleafConstants())
   Tair     = Tair + oftype(Tair,constants.Kelvin)
-  pressure = pressure * constants.kPa2Pa 
+  pressure = pressure * constants.kPa2Pa
   G_ms  = G_mol * (oftype(Tair, constants.Rgas) * Tair) / (pressure)
 end
 
@@ -169,7 +169,7 @@ end
 Conversion between vapor pressure (e), vapor pressure deficit (VPD),
              specific humidity (q), and relative humidity (rH).
 
-# Arguments             
+# Arguments
 - Tair:      Air temperature (deg C)
 - pressure:  Atmospheric pressure (kPa)
 - e:         Vapor pressure (kPa)
@@ -182,7 +182,7 @@ All functions accept the optional arguments:
 - `constants`: dictionary from [`BigleafConstants`](@ref) with entries
   eps and Pa2kPa
 
-# Rreferences 
+# Rreferences
 Foken, T, 2008: Micrometeorology_ Springer, Berlin, Germany.
 """
 function VPD_to_rH(VPD,Tair; Esat_formula=Sonntag1990(),
@@ -192,7 +192,7 @@ function VPD_to_rH(VPD,Tair; Esat_formula=Sonntag1990(),
 end,
 function rH_to_VPD(rH,Tair; Esat_formula=Sonntag1990(),
                       constants=BigleafConstants())
-  if !ismissing(rH) && rH > 1 
+  if !ismissing(rH) && rH > 1
     @warn("Expected relative humidity (rH) between 0 and 1, but was ", rH)
   end
   esat = Esat_from_Tair(Tair; Esat_formula = Esat_formula,constants)
@@ -240,14 +240,14 @@ end
     Rg_to_PPFD(Rg,J_to_mol=4.6,frac_PAR=0.5)
     PPFD_to_Rg(PPFD,J_to_mol=4.6,frac_PAR=0.5)
 
-Conversions between Global Radiation (W m-2) and Photosynthetic Photon Flux 
+Conversions between Global Radiation (W m-2) and Photosynthetic Photon Flux
 Density (umol m-2 s-1)
 
 # Arguments
 - Rg:       Global radiation = incoming short-wave radiation at the surface (W m-2)
 - PPFD:     Photosynthetic photon flux density (umol m-2 s-1)
 - J_to_mol: Conversion factor from J m-2 s-1 (= W m-2) to umol (quanta) m-2 s-1
-- frac_PAR: Fraction of incoming solar irradiance that is photosynthetical-          
+- frac_PAR: Fraction of incoming solar irradiance that is photosynthetical-
   active radiation (PAR); defaults to 0.5
 
 # Details
@@ -294,16 +294,16 @@ Convert CO2 quantities from (umol CO2 m-2 s-1) to (g C m-2 d-1) and vice versa.
 - `constants`: dictionary from [`BigleafConstants`](@ref) with entries:
   Cmol, umol2mol, mol2umol, kg2g, g2kg, says2seconds
 
-# Examples                 
+# Examples
 ```@example
 umolCO2_to_gC(20)  # gC m-2 d-1
 ```
 """
 function umolCO2_to_gC(CO2_flux::FT; constants=BigleafConstants()) where FT
-  C_flux = CO2_flux * FT(constants.umol2mol) * FT(constants.Cmol) * 
+  C_flux = CO2_flux * FT(constants.umol2mol) * FT(constants.Cmol) *
   FT(constants.kg2g) * FT(constants.days2seconds)
 end,
 function gC_to_umolCO2(C_flux::FT; constants=BigleafConstants()) where FT
-  CO2_flux = (C_flux * FT(constants.g2kg)  / FT(constants.days2seconds)) / 
+  CO2_flux = (C_flux * FT(constants.g2kg)  / FT(constants.days2seconds)) /
   FT(constants.Cmol)  * FT(constants.mol2umol)
 end
